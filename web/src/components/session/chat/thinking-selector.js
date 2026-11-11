@@ -102,7 +102,7 @@ export function setupThinkingLevelSelector({
     await cycleQueue;
   });
 
-  documentImpl.addEventListener('click', (e) => {
+  const onDocumentClick = (e) => {
     if (
       thinkingPopup.style.display !== 'none' &&
       !thinkingPopup.contains(e.target) &&
@@ -110,7 +110,8 @@ export function setupThinkingLevelSelector({
     ) {
       closeThinkingPopup();
     }
-  });
+  };
+  documentImpl.addEventListener('click', onDocumentClick);
 
   // Cycle to the next supported thinking level without opening the popup.
   async function cycleThinkingLevel() {
@@ -166,5 +167,6 @@ export function setupThinkingLevelSelector({
     open: openThinkingPopup,
     close: closeThinkingPopup,
     cycle: cycleThinkingLevel,
+    dispose: () => documentImpl.removeEventListener('click', onDocumentClick),
   };
 }

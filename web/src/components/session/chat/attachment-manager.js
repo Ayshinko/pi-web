@@ -185,7 +185,7 @@ export function setupAttachmentManager({
     }
   });
 
-  windowImpl.addEventListener('pi-chat-attach-text', (event) => {
+  const onAttachText = (event) => {
     const detail = (event && event.detail) || {};
     const original = String(detail.original || '').trim();
     if (!original) return;
@@ -196,9 +196,11 @@ export function setupAttachmentManager({
     });
     render();
     if (textarea && typeof textarea.focus === 'function') textarea.focus();
-  });
+  };
+  windowImpl.addEventListener('pi-chat-attach-text', onAttachText);
 
   return {
+    dispose: () => windowImpl.removeEventListener('pi-chat-attach-text', onAttachText),
     files: () => selectedFiles,
     textAttachments: () => selectedTextAttachments,
     hasAttachments: () => selectedFiles.length > 0 || selectedTextAttachments.length > 0,

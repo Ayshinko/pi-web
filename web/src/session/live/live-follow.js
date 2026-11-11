@@ -18,6 +18,7 @@ export function createFollowScrollController({
   windowImpl = window,
   requestAnimationFrameImpl = windowImpl.requestAnimationFrame.bind(windowImpl),
   setTimeoutImpl = windowImpl.setTimeout.bind(windowImpl),
+  ResizeObserverImpl = windowImpl.ResizeObserver,
 } = {}) {
   const scrollImpls = { documentImpl, windowImpl };
   let following = true;
@@ -82,11 +83,12 @@ export function createFollowScrollController({
 
   function onScroll() {
     const currentScroll = getScrollPosition();
-    const scrolledUp = currentScroll < lastScrollTop;
+    const scrolledDown = currentScroll > lastScrollTop;
     lastScrollTop = currentScroll;
     const atBottom = isAtBottom(scrollImpls);
-    following = atBottom;
-    if (scrolledUp && !atBottom) {
+    if (atBottom) {
+      following = true;
+    } else if (!scrolledDown) {
       // User manually scrolled up and away from the bottom; release the forced
       // follow so they can read previous messages without being yanked back
       // down. A downward scrollTop clamp (the browser shrinking the document
@@ -96,6 +98,10 @@ export function createFollowScrollController({
       forcePreviewFollowUntil = 0;
       following = false;
     }
+    // Otherwise (moving down but not yet at the bottom) keep the current mode:
+    // that is our own smooth scroll still in flight, and treating its
+    // intermediate positions as "user left the bottom" used to drop follow
+    // whenever more content arrived mid-scroll.
     if (following) {
       hideFollowButton();
       pendingCount = 0;
@@ -124,6 +130,22 @@ export function createFollowScrollController({
   on(windowImpl, 'wheel', disableFollowOnUserInteraction, { passive: true });
   on(windowImpl, 'touchmove', disableFollowOnUserInteraction, { passive: true });
   on(windowImpl, 'keydown', disableFollowOnUserInteraction, { passive: true });
+
+  // Content can grow without a new entry (tool output rendering inside an
+  // existing entry, code highlighting, images, the streaming preview). While
+  // following, stay pinned to the bottom whenever the message list grows.
+  const messagesEl = documentImpl.getElementById('messages') || contentEl;
+  if (ResizeObserverImpl && messagesEl) {
+    let lastHeight = messagesEl.getBoundingClientRect().height;
+    const resizeObserver = new ResizeObserverImpl(() => {
+      const height = messagesEl.getBoundingClientRect().height;
+      const grew = height > lastHeight;
+      lastHeight = height;
+      if (grew && following) scrollToBottom(false, scrollImpls);
+    });
+    resizeObserver.observe(messagesEl);
+    cleanups.push(() => resizeObserver.disconnect());
+  }
 
   scrollToBottom(false, scrollImpls);
 

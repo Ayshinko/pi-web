@@ -147,12 +147,13 @@ export function setupModelSelector({
     }
   });
 
-  documentImpl.addEventListener('click', (e) => {
+  const onDocumentClick = (e) => {
     if (popup && popup.style.display !== 'none') {
       const modelLabelBtnEl = documentImpl.getElementById('pi-chat-model-label');
       if (!popup.contains(e.target) && e.target !== modelLabelBtnEl) closePopup();
     }
-  });
+  };
+  documentImpl.addEventListener('click', onDocumentClick);
 
   // Load the model list asynchronously; the button is already wired.
   // Fire-and-forget: the popup opens immediately (Ctrl+L) and renders
@@ -203,5 +204,6 @@ export function setupModelSelector({
       }
     });
 
+  api.dispose = () => documentImpl.removeEventListener('click', onDocumentClick);
   return api;
 }

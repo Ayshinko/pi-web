@@ -185,9 +185,17 @@ export function setupMentionAutocomplete({
     insert(item.dataset.insert || '', item.dataset.isdir === '1');
   });
 
-  documentImpl.addEventListener('click', (event) => {
+  const onDocumentClick = (event) => {
     if (isOpen() && !popup.contains(event.target) && event.target !== textarea) close();
-  });
+  };
+  documentImpl.addEventListener('click', onDocumentClick);
 
-  return { handleKeydown, open, close, isOpen, refresh };
+  return {
+    handleKeydown,
+    open,
+    close,
+    isOpen,
+    refresh,
+    dispose: () => documentImpl.removeEventListener('click', onDocumentClick),
+  };
 }

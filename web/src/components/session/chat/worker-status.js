@@ -13,6 +13,7 @@ export function setupWorkerStatusPolling({
   setKnownThinkingLevel = () => {},
   getWorkerModelUpdate = () => null,
   setIntervalImpl = windowImpl.setInterval?.bind(windowImpl),
+  clearIntervalImpl = windowImpl.clearInterval?.bind(windowImpl),
   CustomEventImpl = windowImpl.CustomEvent,
   intervalMs = 1500,
 } = {}) {
@@ -68,7 +69,7 @@ export function setupWorkerStatusPolling({
     }
   }
 
-  if (setIntervalImpl) setIntervalImpl(refresh, intervalMs);
+  const pollTimer = setIntervalImpl ? setIntervalImpl(refresh, intervalMs) : null;
   void refresh();
   updateContextUsage();
 
@@ -81,6 +82,7 @@ export function setupWorkerStatusPolling({
   return {
     refresh,
     dispose: () => {
+      if (pollTimer != null) clearIntervalImpl?.(pollTimer);
       windowImpl.removeEventListener?.('pi-session-reload', onSessionReload);
     },
   };

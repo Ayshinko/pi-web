@@ -129,6 +129,70 @@ describe('createFollowScrollController', () => {
     expect(controller.isFollowing()).toBe(true);
   });
 
+  it('keeps following while our own smooth scroll is still moving down', () => {
+    const { documentImpl, windowImpl, fire, controller } = setup({ scrollHeight: 4000 });
+    windowImpl.scrollY = 3000;
+    fire('scroll'); // at bottom
+    windowImpl.scrollY = 1200; // user drags up: release
+    fire('scroll');
+    expect(controller.isFollowing()).toBe(false);
+    controller.forceFollowToBottom(true);
+    windowImpl.scrollY = 2000; // mid-flight of the smooth scroll, not yet at bottom
+    fire('scroll');
+    expect(controller.isFollowing()).toBe(true);
+    expect(documentImpl.querySelector('.follow-button')).toBeNull();
+  });
+
+  it('pins to the bottom when the message list grows while following', () => {
+    const dom = new JSDOM('<body><main id="content"><div id="messages"></div></main></body>');
+    const documentImpl = dom.window.document;
+    for (const el of [documentImpl.documentElement, documentImpl.body]) {
+      Object.defineProperty(el, 'scrollHeight', { value: 3000, configurable: true });
+    }
+    const messages = documentImpl.getElementById('messages');
+    let height = 500;
+    messages.getBoundingClientRect = () => ({ height });
+    let observerCallback = null;
+    const disconnect = vi.fn();
+    class FakeResizeObserver {
+      constructor(cb) {
+        observerCallback = cb;
+      }
+      observe() {}
+      disconnect = disconnect;
+    }
+    const handlers = {};
+    const windowImpl = {
+      scrollY: 0,
+      innerHeight: 1000,
+      scrollTo: vi.fn(),
+      addEventListener: (type, h) => (handlers[type] ||= []).push(h),
+      removeEventListener: () => {},
+    };
+    const controller = createFollowScrollController({
+      documentImpl,
+      windowImpl,
+      requestAnimationFrameImpl: (cb) => cb(),
+      setTimeoutImpl: (cb) => cb(),
+      ResizeObserverImpl: FakeResizeObserver,
+    });
+    windowImpl.scrollTo.mockClear();
+
+    height = 900;
+    observerCallback();
+    expect(windowImpl.scrollTo).toHaveBeenCalledTimes(1);
+
+    windowImpl.scrollTo.mockClear();
+    handlers.wheel.forEach((h) => h({ type: 'wheel' })); // user takes over (not at bottom)
+    height = 1400;
+    observerCallback();
+    expect(controller.isFollowing()).toBe(false);
+    expect(windowImpl.scrollTo).not.toHaveBeenCalled();
+
+    controller.dispose();
+    expect(disconnect).toHaveBeenCalled();
+  });
+
   it('dispose removes listeners so later scrolls no longer change state', () => {
     const { fire, controller } = setup();
     controller.dispose();

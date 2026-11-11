@@ -4,7 +4,7 @@ export function setupComposerHeightVar({
   form,
   ResizeObserverImpl = windowImpl.ResizeObserver,
 } = {}) {
-  if (!form) return { update: () => {} };
+  if (!form) return { update: () => {}, dispose: () => {} };
 
   function update() {
     const height = Math.ceil(form.getBoundingClientRect().height || 0);
@@ -13,9 +13,14 @@ export function setupComposerHeightVar({
 
   update();
   windowImpl.addEventListener('resize', update, { passive: true });
-  if (ResizeObserverImpl) {
-    new ResizeObserverImpl(update).observe(form);
-  }
+  const resizeObserver = ResizeObserverImpl ? new ResizeObserverImpl(update) : null;
+  resizeObserver?.observe(form);
 
-  return { update };
+  return {
+    update,
+    dispose: () => {
+      windowImpl.removeEventListener('resize', update, { passive: true });
+      resizeObserver?.disconnect();
+    },
+  };
 }

@@ -352,6 +352,48 @@ describe('chat composer runner', () => {
     expect(dom.window.document.querySelector('.pi-chat-attachment-text')).toBeNull();
   });
 
+  it('dispose removes global handlers so a remount answers an ask-question once', async () => {
+    const tick = () => new Promise((r) => setTimeout(r, 0));
+    const composerHtml =
+      '<form id="pi-chat-composer" data-chat-available="true" data-session-id="s1"><div class="pi-chat-shell"><textarea id="pi-chat-message"></textarea><input id="pi-chat-images"><button id="pi-chat-attach"></button><div id="pi-chat-attachments"></div><button id="pi-chat-send"></button><span id="pi-chat-status"></span></div></form>' +
+      '<div class="ask-question-card"><button class="ask-question-option-action" data-question="Pick" data-answer="A">A</button></div>';
+    const dom = new JSDOM(`<body>${composerHtml}</body>`);
+    const sendChat = vi.fn(() =>
+      Promise.resolve(new Response('{"status":"queued"}', { status: 200 })),
+    );
+    const clearIntervalImpl = vi.fn();
+    const mount = () => {
+      dom.window.document.body.innerHTML = composerHtml;
+      const runtime = runChatComposer({
+        documentImpl: dom.window.document,
+        windowImpl: dom.window,
+        chatApi: {
+          getWorkerStatus: () => Promise.resolve(new Response('{}', { status: 500 })),
+          sendChat,
+        },
+        chatSelectors: { THINKING_LEVELS: [] },
+        modelSelector: { setupModelSelector: vi.fn() },
+        thinkingSelector: { setupThinkingLevelSelector: vi.fn() },
+        FormDataImpl: dom.window.FormData,
+        CustomEventImpl: dom.window.CustomEvent,
+        setIntervalImpl: () => 42,
+        clearIntervalImpl,
+      });
+      dom.window.document.dispatchEvent(new dom.window.Event('DOMContentLoaded'));
+      return runtime;
+    };
+
+    mount().dispose();
+    expect(clearIntervalImpl).toHaveBeenCalledWith(42);
+    mount();
+
+    dom.window.document.querySelector('.ask-question-option-action').click();
+    await tick();
+
+    expect(sendChat).toHaveBeenCalledTimes(1);
+    expect(sendChat.mock.calls[0][1].get('message')).toBe('"Pick" = "A"');
+  });
+
   it('focuses the message textarea on page load', () => {
     const dom = new JSDOM(
       '<body><form id="pi-chat-composer" data-chat-available="true" data-session-id="s1"><textarea id="pi-chat-message"></textarea><input id="pi-chat-images"><button id="pi-chat-attach"></button><div id="pi-chat-attachments"></div><button id="pi-chat-send"></button><span id="pi-chat-status"></span></form></body>',

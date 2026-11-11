@@ -50,6 +50,7 @@ export function runChatComposer({
   queueStore = new QueueStore(),
   queueApi = null,
   getLiveEntries = null,
+  clearIntervalImpl = clearInterval,
 } = {}) {
   const document = documentImpl;
   const window = windowImpl;
@@ -65,6 +66,11 @@ export function runChatComposer({
   const URLSearchParams = URLSearchParamsImpl;
   const CustomEvent = CustomEventImpl;
   const setInterval = setIntervalImpl;
+  // Everything that listens on document/window or runs a timer registers its
+  // teardown here; the returned dispose() runs them when <ChatComposer>
+  // unmounts, so SPA navigation does not stack duplicate handlers (one click on
+  // an ask-question answer used to send once per session page ever opened).
+  const disposers = [];
   let onWorkerModelUpdate = null;
   let currentModelForThinking = null;
   let positionPopover = () => {};
@@ -132,11 +138,13 @@ export function runChatComposer({
       expandButton,
     } = getComposerElements({ documentImpl: document, form });
 
-    const { update: updateComposerHeightVar } = setupComposerHeightVar({
+    const composerHeight = setupComposerHeightVar({
       documentImpl: document,
       windowImpl: window,
       form,
     });
+    disposers.push(composerHeight.dispose);
+    const updateComposerHeightVar = composerHeight.update;
 
     // Expand/collapse the composer for larger typing area. State persists
     // per-session in localStorage.
@@ -157,6 +165,7 @@ export function runChatComposer({
       attachmentList,
       updateSendEnabled,
     });
+    disposers.push(attachments.dispose);
 
     const textareaControls = setupTextareaControls({
       windowImpl: window,
@@ -171,6 +180,7 @@ export function runChatComposer({
       updateSendEnabled,
       updateComposerHeight: updateComposerHeightVar,
     });
+    disposers.push(textareaControls.dispose);
     const autoResizeTextarea = textareaControls.autoResize;
 
     setupComposerExpansion({
@@ -202,12 +212,13 @@ export function runChatComposer({
       CustomEventImpl: CustomEvent,
     });
 
-    setupAskQuestionHandlers({
+    const askQuestions = setupAskQuestionHandlers({
       documentImpl: document,
       sendChatMessage: submission.sendChatMessage,
     });
+    disposers.push(askQuestions.dispose);
 
-    setupSteerQueue({
+    const steerQueue = setupSteerQueue({
       windowImpl: window,
       store: queueStore,
       queueButton,
@@ -219,6 +230,7 @@ export function runChatComposer({
       queueApi,
       getLiveEntries,
     });
+    disposers.push(steerQueue.dispose);
 
     const workerStatus = setupWorkerStatusPolling({
       windowImpl: window,
@@ -235,8 +247,10 @@ export function runChatComposer({
       setKnownThinkingLevel: toolbar.setKnownThinkingLevel,
       getWorkerModelUpdate: () => onWorkerModelUpdate,
       setIntervalImpl: setInterval,
+      clearIntervalImpl,
       CustomEventImpl: CustomEvent,
     });
+    disposers.push(workerStatus.dispose);
     submission.setRefreshWorkerStatus(workerStatus.refresh);
 
     // Focus the message textarea on page load so the user can start typing immediately.
@@ -250,6 +264,7 @@ export function runChatComposer({
       updateContextUsage,
     });
     positionPopover = contextPopover.position;
+    disposers.push(contextPopover.dispose);
 
     return true;
   }
@@ -267,6 +282,14 @@ export function runChatComposer({
     _thinkingSelectorApi = selectorLoaders.loadThinkingSelector();
     _slashSelectorApi = selectorLoaders.loadSlashSelector();
     _mentionSelectorApi = selectorLoaders.loadMentionSelector();
+    for (const selector of [
+      _modelSelectorApi,
+      _thinkingSelectorApi,
+      _slashSelectorApi,
+      _mentionSelectorApi,
+    ]) {
+      disposers.push(selector?.dispose);
+    }
   }
 
   if (document.readyState === 'loading') {
@@ -276,4 +299,11 @@ export function runChatComposer({
   }
 
   navigateInitialChatLeaf({ entries, leafId, urlTargetId, byId, navigateTo });
+
+  return {
+    dispose: () => {
+      document.removeEventListener('DOMContentLoaded', initPiChatControls);
+      for (const dispose of disposers.splice(0)) dispose?.();
+    },
+  };
 }
