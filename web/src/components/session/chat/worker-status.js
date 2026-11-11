@@ -5,6 +5,7 @@ export function setupWorkerStatusPolling({
   setStatus = () => {},
   setModelLabel = () => {},
   setThinkingLabel = () => {},
+  setExtensionStatuses = () => {},
   updateContextUsage = () => {},
   getKnownModelLabel = () => '',
   setKnownModelLabel = () => {},
@@ -48,6 +49,7 @@ export function setupWorkerStatusPolling({
         }
       }
       if (data.state) lastWorkerState = data.state;
+      setExtensionStatuses(data.extensionStatuses || {});
       setModelLabel(getKnownModelLabel());
       setThinkingLabel(getKnownThinkingLevel());
       updateContextUsage();

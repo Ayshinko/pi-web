@@ -227,6 +227,7 @@ export function runChatComposer({
       setStatus,
       setModelLabel,
       setThinkingLabel,
+      setExtensionStatuses: toolbar.setExtensionStatuses,
       updateContextUsage,
       getKnownModelLabel: toolbar.getKnownModelLabel,
       setKnownModelLabel: toolbar.setKnownModelLabel,

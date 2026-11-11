@@ -198,6 +198,7 @@ export default {
   'session.filterAllTitle': 'Show everything',
   'session.resizeTree': 'Resize session sidebar',
   'session.labelEntry': 'Add or edit label',
+  'session.copyMessage': 'Copy message text',
   'session.labelInput': 'Label',
   'session.removeLabel': 'Remove label',
   'session.labelPrompt': 'Label (empty to remove):',
@@ -224,6 +225,11 @@ export default {
   'menu.noUserMessagesToFork': 'No user messages to fork from',
   'menu.loadMessagesFailed': 'Failed to load messages',
   'menu.cloneFailed': 'Clone failed',
+  'menu.copySession': 'Copy Session (full)',
+  'menu.copySessionClean': 'Copy Session (text only)',
+  'menu.copySessionDone': 'Copied {mode} session: {entries} entries / {chars} characters',
+  'menu.copySessionEmpty': 'Nothing to copy in the current branch',
+  'menu.copySessionRetry': 'Session loaded — tap Copy Session again to copy it',
   'menu.notImplemented': 'Not yet implemented',
 
   // ── Diff review modal ──

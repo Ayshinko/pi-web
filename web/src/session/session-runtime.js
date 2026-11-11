@@ -15,6 +15,7 @@ export const sessionRuntime = {
   rightSidebar: null, // { toggle, open, collapse, activateTab }
   layout: null, // { isMobileLayout, closeSidebar }
   toggleState: null, // toggle controller { applyToNode, toggleThinking, ... }
+  copySource: null, // () => { entries (null when paginated), leafId }
 };
 
 export function resetSessionRuntime() {
@@ -23,4 +24,5 @@ export function resetSessionRuntime() {
   sessionRuntime.rightSidebar = null;
   sessionRuntime.layout = null;
   sessionRuntime.toggleState = null;
+  sessionRuntime.copySource = null;
 }

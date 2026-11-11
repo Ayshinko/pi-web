@@ -2875,7 +2875,7 @@
       z-index: 10;
     }
 
-    .label-btn {
+    .copy-text-btn {
       position: absolute;
       top: 8px;
       right: 42px;
@@ -2895,7 +2895,7 @@
       z-index: 10;
     }
 
-    .fork-btn {
+    .label-btn {
       position: absolute;
       top: 8px;
       right: 76px;
@@ -2915,8 +2915,30 @@
       z-index: 10;
     }
 
+    .fork-btn {
+      position: absolute;
+      top: 8px;
+      right: 110px;
+      width: 28px;
+      height: 28px;
+      padding: 6.5px;
+      background: var(--container-bg);
+      border: 1px solid var(--dim);
+      border-radius: 4px;
+      color: var(--muted);
+      cursor: pointer;
+      opacity: 0;
+      transition: opacity 0.15s, background 0.15s, color 0.15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10;
+    }
+
     .user-message:hover .copy-link-btn,
     .assistant-message:hover .copy-link-btn,
+    .user-message:hover .copy-text-btn,
+    .assistant-message:hover .copy-text-btn,
     .user-message:hover .label-btn,
     .assistant-message:hover .label-btn,
     .user-message:hover .fork-btn,
@@ -2925,6 +2947,7 @@
     }
 
     .copy-link-btn:hover,
+    .copy-text-btn:hover,
     .label-btn:hover,
     .fork-btn:hover {
       background: var(--accent);
@@ -2932,7 +2955,8 @@
       border-color: var(--accent);
     }
 
-    .copy-link-btn.copied {
+    .copy-link-btn.copied,
+    .copy-text-btn.copied {
       background: var(--success, #22c55e);
       color: white;
       border-color: var(--success, #22c55e);
@@ -5057,6 +5081,24 @@
     }
     .pi-chat-status.error { color: var(--error); }
     .pi-chat-status.running { color: var(--success); }
+
+    .pi-chat-ext-status-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 2px 12px;
+      padding: 0 8px 5px;
+      min-width: 0;
+    }
+    .pi-chat-ext-status {
+      min-width: 0;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: var(--muted);
+      font-size: 11px;
+      font-variant-numeric: tabular-nums;
+    }
 
     .pi-chat-model-label {
       background: none;

@@ -154,6 +154,9 @@ func (s *Server) handleWorkerStatus(w http.ResponseWriter, r *http.Request) {
 			status.ThinkingLevel = state.ThinkingLevel
 		}
 	}
+	if s.chatSender != nil {
+		status.ExtensionStatuses = s.chatSender.Status(sessionID).ExtensionStatuses
+	}
 	writeJSON(w, 0, status)
 }
 

@@ -23,6 +23,7 @@ import {
   copyToClipboard,
   downloadSessionJson,
 } from './render/session-entry-actions.js';
+import { messageCopyText } from './render/session-copy.js';
 
 export function wireSessionContentRuntime({
   windowImpl,
@@ -138,6 +139,14 @@ export function wireSessionContentRuntime({
   // reactive re-renders of #messages.
   const messagesEl = documentImpl.getElementById('messages');
   const onMessagesClick = (e) => {
+    const copyTextBtn = e.target.closest?.('.copy-text-btn');
+    if (copyTextBtn) {
+      e.stopPropagation();
+      const text = messageCopyText(model.byId.get(copyTextBtn.dataset.entryId));
+      if (text)
+        copyToClipboard(text, copyTextBtn, { documentImpl, navigatorImpl: target.navigator });
+      return;
+    }
     const copyBtn = e.target.closest?.('.copy-link-btn');
     if (copyBtn) {
       e.stopPropagation();
@@ -164,9 +173,17 @@ export function wireSessionContentRuntime({
   };
   messagesEl?.addEventListener('click', onMessagesClick);
 
+  // Lets the command menu copy the branch the user is viewing without a fetch
+  // (a fetch would lose the click's user activation on HTTP/Safari clipboards).
+  sessionRuntime.copySource = () => ({
+    entries: model.truncated ? null : model.entries,
+    leafId: model.currentLeafId,
+  });
+
   return {
     sessionFormat,
     dispose: () => {
+      sessionRuntime.copySource = null;
       messagesEl?.removeEventListener('click', onMessagesClick);
       if (previousDownloadSessionJson === undefined) delete target.downloadSessionJson;
       else target.downloadSessionJson = previousDownloadSessionJson;

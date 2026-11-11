@@ -127,6 +127,16 @@
     <div id="pi-chat-attachments" class="pi-chat-attachments"></div>
     <ChatSelectorPopups />
     <ChatToolbar {chatAvailable} {toolbar} {modelLabel} />
+    {#if toolbar.extensionStatusLines.length}<div
+        class="pi-chat-ext-status-bar"
+        data-testid="extension-status-bar"
+      >
+        {#each toolbar.extensionStatusLines as line (line.key)}<span
+            class="pi-chat-ext-status"
+            data-status-key={line.key}
+            title={line.text}>{line.text}</span
+          >{/each}
+      </div>{/if}
     <ContextUsage popover />
   </div>
   <TextAttachmentModal />

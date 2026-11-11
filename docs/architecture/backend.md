@@ -254,6 +254,7 @@ type piRPCWorker struct {
     lastStreamActivity   atomic.Int64 // unix nanos; stream events keep worker visually running
     streamSink           StreamEventSink
     streamPreview        *streamPreviewAccumulator
+    extensionStatuses    map[string]string // ctx.ui.setStatus footer lines, ANSI-stripped
 }
 ```
 
@@ -272,7 +273,7 @@ type piRPCWorker struct {
 | `/api/set-model` | POST | `handleSetModel` | Change model for session |
 | `/api/set-thinking-level` | POST | `handleSetThinkingLevel` | Change thinking level |
 | `/api/models` | GET | `handleAvailableModels` | List available AI models |
-| `/api/worker-status` | GET | `handleWorkerStatus` | Get worker state for session |
+| `/api/worker-status` | GET | `handleWorkerStatus` | Get worker state for session, plus `extensionStatuses` (footer lines extensions publish via `ctx.ui.setStatus`, e.g. quota / token speed) |
 | `/api/commands` | GET | `handleCommands` | List slash commands exposed by the session worker |
 | `/metrics` | GET | `handleMetricsPage` | Worker metrics dashboard (self-contained HTML) |
 | `/api/metrics` | GET | `handleMetrics` | JSON snapshot: process + per-worker CPU/RSS (gopsutil); see `docs/dev/metrics-dashboard.md` |

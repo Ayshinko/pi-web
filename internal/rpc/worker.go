@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"regexp"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -38,6 +39,7 @@ type piRPCWorker struct {
 	lastStreamActivity   atomic.Int64 // unix nanos; stream/turn events keep worker visually running
 	streamSink           StreamEventSink
 	streamPreview        *streamPreviewAccumulator
+	extensionStatuses    map[string]string
 }
 
 func (w *piRPCWorker) touch() {
@@ -362,6 +364,12 @@ func (w *piRPCWorker) Status() workers.WorkerStatus {
 	s.Model = w.currentModel
 	s.ModelProvider = w.currentProvider
 	s.ThinkingLevel = w.currentThinkingLevel
+	if len(w.extensionStatuses) > 0 {
+		s.ExtensionStatuses = make(map[string]string, len(w.extensionStatuses))
+		for key, text := range w.extensionStatuses {
+			s.ExtensionStatuses[key] = text
+		}
+	}
 	if s.State == workers.WorkerStateIdle && w.hasRecentStreamActivityLocked(time.Now()) {
 		s.State = workers.WorkerStateRunning
 	}
@@ -444,8 +452,11 @@ func (w *piRPCWorker) consume(r io.Reader) {
 
 func (w *piRPCWorker) handleRPCLine(line string) {
 	var meta struct {
-		Type  string `json:"type"`
-		Level string `json:"level"`
+		Type       string  `json:"type"`
+		Level      string  `json:"level"`
+		Method     string  `json:"method"`
+		StatusKey  string  `json:"statusKey"`
+		StatusText *string `json:"statusText"`
 	}
 	if err := json.Unmarshal([]byte(line), &meta); err != nil {
 		return
@@ -486,8 +497,30 @@ func (w *piRPCWorker) handleRPCLine(line string) {
 			w.currentThinkingLevel = meta.Level
 			w.mu.Unlock()
 		}
+	case "extension_ui_request":
+		if meta.Method != "setStatus" || meta.StatusKey == "" {
+			return
+		}
+		w.mu.Lock()
+		defer w.mu.Unlock()
+		text := ""
+		if meta.StatusText != nil {
+			text = strings.TrimSpace(ansiEscapePattern.ReplaceAllString(*meta.StatusText, ""))
+		}
+		if text == "" {
+			delete(w.extensionStatuses, meta.StatusKey)
+			return
+		}
+		if w.extensionStatuses == nil {
+			w.extensionStatuses = make(map[string]string)
+		}
+		w.extensionStatuses[meta.StatusKey] = text
 	}
 }
+
+// ansiEscapePattern matches CSI (colors, cursor) and OSC (hyperlinks, titles)
+// sequences that pi themes embed in status text.
+var ansiEscapePattern = regexp.MustCompile(`\x1b\[[0-9;?]*[ -/]*[@-~]|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)`)
 
 func (w *piRPCWorker) noteStreamActivity() {
 	w.lastStreamActivity.Store(time.Now().UnixNano())

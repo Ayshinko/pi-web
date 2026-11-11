@@ -87,7 +87,7 @@ This flow covers a user typing a message (with optional image attachment) in the
      │             │              │                  │                  ├─── Status()
      │             │              │                  │                  │   (may return running)
      │             │              │                  │                  │               │
-     │◀──────────── {state: "running", model: "…", thinkingLevel: "…"} ─│                  │               │
+     │◀──────────── {state: "running", model: "…", thinkingLevel: "…", extensionStatuses: {…}} ─│                  │               │
      │             │              │                  │                  │               │
      │             │              │                  │                  │               │
      │  [Later]    │              │                  │                  │               │

@@ -58,6 +58,29 @@ describe('setupWorkerStatusPolling', () => {
     expect(onWorkerModelUpdate).toHaveBeenCalledWith('openai', 'gpt-4o');
   });
 
+  it('forwards extension status lines and clears them when absent', async () => {
+    const setExtensionStatuses = vi.fn();
+    const getWorkerStatus = vi
+      .fn()
+      .mockResolvedValueOnce(
+        response({ state: 'idle', extensionStatuses: { quota: 'Codex 5h 73% left' } }),
+      )
+      .mockResolvedValueOnce(response({ state: 'idle' }));
+    const controller = setupWorkerStatusPolling({
+      windowImpl: new EventTarget(),
+      sessionId: 's',
+      chatApi: { getWorkerStatus },
+      setExtensionStatuses,
+      setIntervalImpl: () => {},
+      CustomEventImpl: Event,
+    });
+    await tick();
+    expect(setExtensionStatuses).toHaveBeenLastCalledWith({ quota: 'Codex 5h 73% left' });
+
+    await controller.refresh();
+    expect(setExtensionStatuses).toHaveBeenLastCalledWith({});
+  });
+
   it('dispatches pi-worker-done on running to idle transition', async () => {
     const events = [];
     const windowImpl = new EventTarget();

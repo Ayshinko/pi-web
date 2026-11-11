@@ -5,7 +5,7 @@
   // keeps its `entry-<id>` anchor so annotation offsets + scroll/toggle survive.
   // Shared by the live app and the static export (model passed as a prop).
   import { marked } from 'marked';
-  import { icon, GitFork, Link2, Tag } from '../../shared/icons.js';
+  import { icon, Copy, GitFork, Link2, Tag } from '../../shared/icons.js';
   import { t } from '../../shared/i18n.js';
   import { safeMarkedParse } from '../../session/render/markdown.js';
   import { formatTimestamp } from '../../session/render/entry-format.js';
@@ -48,6 +48,12 @@
       data-entry-id={id}
       title={t('session.labelEntry')}
       aria-label={t('session.labelEntry')}>{@html icon(Tag, { size: 13 })}</button
+    >{/if}
+  {#if live}<button
+      class="copy-text-btn"
+      data-entry-id={id}
+      title={t('session.copyMessage')}
+      aria-label={t('session.copyMessage')}>{@html icon(Copy, { size: 13 })}</button
     >{/if}
   <button class="copy-link-btn" data-entry-id={id} title="Copy link to this message"
     >{@html icon(Link2, { size: 14 })}</button

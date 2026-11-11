@@ -13,6 +13,8 @@
     Share2,
     GitFork,
     Copy,
+    ClipboardCopy,
+    ClipboardList,
     Terminal,
     ListTree,
     FileDiff,
@@ -37,6 +39,9 @@
     loadForkEntries,
     renameSession,
   } from '../../session/session-menu-actions.js';
+  import { activeBranch, formatConversation } from '../../session/render/session-copy.js';
+  import { sessionRuntime } from '../../session/session-runtime.js';
+  import { copyToClipboard } from '../../shared/clipboard.js';
 
   let { sessionId = '', runningSessionIds = null } = $props();
 
@@ -53,6 +58,8 @@
     { action: 'share', icon: Share2, label: 'menu.share' },
     { action: 'fork', icon: GitFork, label: 'menu.fork' },
     { action: 'clone', icon: Copy, label: 'menu.clone' },
+    { action: 'copy-session', icon: ClipboardList, label: 'menu.copySession' },
+    { action: 'copy-session-clean', icon: ClipboardCopy, label: 'menu.copySessionClean' },
     { action: 'terminal', icon: Terminal, label: 'menu.resumeTerminal' },
     { action: 'tree', icon: ListTree, label: 'menu.tree', kbd: '⌘B' },
     { action: 'diff', icon: FileDiff, label: 'menu.diff' },
@@ -83,6 +90,41 @@
   // popover does not linger if the session page ever stops unmounting
   // (HomeMenu closes the same way).
   let closeMenu = () => {};
+
+  // Copies the active branch as plain text (same format as pi's /copy-session).
+  // Uses the in-memory entries when the whole session is loaded so the copy
+  // runs inside the click's user activation. A paginated session is fetched
+  // first; if the clipboard then rejects the late write (HTTP/Safari), the
+  // text is kept so the next click copies it synchronously.
+  let pendingCopy = null;
+  async function copySession(clean) {
+    const mode = clean ? 'clean' : 'full';
+    const source = sessionRuntime.copySource?.() || { entries: null, leafId: '' };
+    const { text, entryCount } =
+      pendingCopy?.sessionId === sessionId && pendingCopy.mode === mode
+        ? pendingCopy
+        : formatConversation(
+            activeBranch(source.entries || (await loadForkEntries(sessionId)), source.leafId),
+            { clean },
+          );
+    pendingCopy = null;
+    if (!entryCount) {
+      toast(t('menu.copySessionEmpty'));
+      return;
+    }
+    if (await copyToClipboard(text)) {
+      toast(
+        t('menu.copySessionDone', {
+          mode,
+          entries: entryCount.toLocaleString(),
+          chars: text.length.toLocaleString(),
+        }),
+      );
+      return;
+    }
+    pendingCopy = { sessionId, mode, text, entryCount };
+    toast(t('menu.copySessionRetry'));
+  }
 
   onMount(() => {
     const menuBtn = document.getElementById('command-menu-btn');
@@ -209,6 +251,13 @@
             .catch(() => toast(t('menu.cloneFailed')));
           break;
         }
+        case 'copy-session':
+        case 'copy-session-clean':
+          closeMenu();
+          copySession(action === 'copy-session-clean').catch(() =>
+            toast(t('menu.loadMessagesFailed')),
+          );
+          break;
         case 'version':
           closeMenu();
           openVersionModal();

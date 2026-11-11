@@ -20,6 +20,14 @@ export class ChatToolbarState {
   thinkingLevel = $state('');
   knownModelLabel = $state('');
   knownThinkingLevel = $state('');
+  // Footer lines published by pi extensions via ctx.ui.setStatus (quota,
+  // token speed, ...), keyed by status key and shown sorted like pi's footer.
+  extensionStatuses = $state({});
+  extensionStatusLines = $derived(
+    Object.keys(this.extensionStatuses)
+      .sort()
+      .map((key) => ({ key, text: this.extensionStatuses[key] })),
+  );
 
   // Injected by the runtime once the context-usage controller exists.
   updateContextUsage = () => {};
@@ -38,6 +46,10 @@ export class ChatToolbarState {
 
   setThinkingLabel = (level) => {
     this.thinkingLevel = level || '';
+  };
+
+  setExtensionStatuses = (statuses) => {
+    this.extensionStatuses = statuses && typeof statuses === 'object' ? statuses : {};
   };
 
   getKnownModelLabel = () => this.knownModelLabel;

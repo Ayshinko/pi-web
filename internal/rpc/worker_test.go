@@ -66,6 +66,61 @@ func TestStatusReportsRunningDuringRecentStreamActivity(t *testing.T) {
 	}
 }
 
+func TestStatusMirrorsExtensionSetStatus(t *testing.T) {
+	tests := []struct {
+		name  string
+		lines []string
+		want  map[string]string
+	}{
+		{
+			name:  "strips ansi colors",
+			lines: []string{`{"type":"extension_ui_request","id":"a","method":"setStatus","statusKey":"quota","statusText":"\u001b[32mCodex 5h 73% left\u001b[39m"}`},
+			want:  map[string]string{"quota": "Codex 5h 73% left"},
+		},
+		{
+			name: "real pi footer lines with nested sgr codes",
+			lines: []string{
+				`{"type":"extension_ui_request","id":"a","method":"setStatus","statusKey":"quota","statusText":"\u001b[39m\u001b[2mCodex 5h 100% · \u001b[39m\u001b[2mW 83%\u001b[22;39m\u001b[22;39m | Claude: Auth expired"}`,
+				`{"type":"extension_ui_request","id":"b","method":"setStatus","statusKey":"taskBenchmark","statusText":"⚡ Live — · Avg \u001b[38;5;5m-- tok/s\u001b[39m · ↓\u001b[39m\u001b[2m0\u001b[22;39m"}`,
+			},
+			want: map[string]string{
+				"quota":         "Codex 5h 100% · W 83% | Claude: Auth expired",
+				"taskBenchmark": "⚡ Live — · Avg -- tok/s · ↓0",
+			},
+		},
+		{
+			name: "undefined text clears the key",
+			lines: []string{
+				`{"type":"extension_ui_request","id":"a","method":"setStatus","statusKey":"tps","statusText":"Live 24 tok/s"}`,
+				`{"type":"extension_ui_request","id":"b","method":"setStatus","statusKey":"tps"}`,
+			},
+			want: nil,
+		},
+		{
+			name:  "ignores other ui methods",
+			lines: []string{`{"type":"extension_ui_request","id":"a","method":"notify","message":"hi"}`},
+			want:  nil,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			w := &piRPCWorker{status: workers.WorkerStatus{State: workers.WorkerStateIdle}, pending: make(map[string]chan response)}
+			for _, line := range tt.lines {
+				w.handleRPCLine(line)
+			}
+			got := w.Status().ExtensionStatuses
+			if len(got) != len(tt.want) {
+				t.Fatalf("extensionStatuses = %#v, want %#v", got, tt.want)
+			}
+			for key, text := range tt.want {
+				if got[key] != text {
+					t.Fatalf("extensionStatuses[%q] = %q, want %q", key, got[key], text)
+				}
+			}
+		})
+	}
+}
+
 func TestStatusReturnsIdleAfterAgentEnd(t *testing.T) {
 	w := &piRPCWorker{
 		status:  workers.WorkerStatus{State: workers.WorkerStateRunning},

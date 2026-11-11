@@ -24,6 +24,9 @@ type WorkerStatus struct {
 	ModelName     string `json:"modelName,omitempty"`
 	ModelProvider string `json:"modelProvider,omitempty"`
 	ThinkingLevel string `json:"thinkingLevel,omitempty"`
+	// ExtensionStatuses mirrors the footer lines pi extensions publish with
+	// ctx.ui.setStatus(key, text) (quota, token speed, ...), ANSI-stripped.
+	ExtensionStatuses map[string]string `json:"extensionStatuses,omitempty"`
 }
 
 // SlashCommand is a slash-invokable command exposed by a pi worker via the
